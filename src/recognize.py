@@ -77,8 +77,8 @@ class FaceRecognizer:
             self.model_precision = "simulated"
             print("\n" + "!"*80)
             print("BLINK EDGE ENGINE WARNING: No ONNX model file found.")
-            print("Run: python face-auth/src/download_weights.py  to download FP32 weights.")
-            print("Run: python face-auth/src/quantize.py          to produce INT8 weights.")
+            print("Run: python src/download_weights.py  to download FP32 weights.")
+            print("Run: python src/quantize.py          to produce INT8 weights.")
             print("FaceRecognizer is starting in high-fidelity SIMULATED fallback mode.")
             print("!"*80 + "\n")
 

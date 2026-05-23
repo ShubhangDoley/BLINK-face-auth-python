@@ -364,8 +364,8 @@ Based on INT8 Python benchmarks (Phase 8 StageTimer output), estimated mobile ti
 
 ## Quick Start Checklist
 
-- [ ] Run `python face-auth/src/quantize.py` → `models/mobilefacenet_int8.onnx`
-- [ ] Run `python face-auth/src/export_mobile.py --target tflite` → `models/mobile/mobilefacenet.tflite`
+- [ ] Run `python src/quantize.py` → `models/mobilefacenet_int8.onnx`
+- [ ] Run `python src/export_mobile.py --target tflite` → `models/mobile/mobilefacenet.tflite`
 - [ ] Copy `models/mobile/mobilefacenet.tflite` into your RN app's assets
 - [ ] Copy `data/users.json` into your RN app (or implement sync)
 - [ ] Implement preprocessing: resize → CLAHE (LAB, L-channel) → normalize → NCHW

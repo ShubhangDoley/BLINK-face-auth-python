@@ -142,7 +142,6 @@ def ensure_directories():
     """
     Ensures that all folders for the BLINK project are established.
     Directory structure:
-      face-auth/
       ├── models/
       │   └── mobile/
       ├── data/

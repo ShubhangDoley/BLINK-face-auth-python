@@ -38,7 +38,7 @@ def download_face_weights():
         urllib.request.urlretrieve(url, target_path, reporthook=progress_callback)
         print("\n" + "="*50)
         print(f"[SUCCESS] Face recognition weights successfully saved to: {target_path}")
-        print("[INFO] Restart your face-auth/src/main.py stream to activate production-grade neural inference!")
+        print("[INFO] Restart your src/main.py stream to activate production-grade neural inference!")
         print("="*50 + "\n")
         
     except Exception as e:

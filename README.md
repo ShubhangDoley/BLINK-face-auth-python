@@ -8,8 +8,6 @@ This repository implements the primary AI engine written in Python 3.11, structu
 
 ## 📁 Directory Structure
 ```
-face-auth/
-│
 ├── models/                     # Holds local ONNX/TFLite model weight files (e.g., mobilefacenet.onnx)
 │
 ├── data/                       # Local database & media storage
@@ -57,9 +55,9 @@ By default, the BLINK engine runs in a **high-fidelity simulated fallback mode**
 To activate **production-grade, 99%+ accurate** neural inference, run the programmatic downloader utility:
 
 ```bash
-python face-auth/src/download_weights.py
+python src/download_weights.py
 ```
-This script downloads a standard face recognition ONNX model file from OpenCV's Hugging Face Zoo, saving it to `face-auth/models/mobilefacenet.onnx` (~36MB).
+This script downloads a standard face recognition ONNX model file from OpenCV's Hugging Face Zoo, saving it to `models/mobilefacenet.onnx` (~36MB).
 
 ---
 
@@ -68,7 +66,7 @@ This script downloads a standard face recognition ONNX model file from OpenCV's 
 To run the unified real-time face authentication engine with multi-stage active liveness:
 
 ```bash
-python face-auth/src/main.py
+python src/main.py
 ```
 
 ### 🎮 The Active Security Challenges:
@@ -88,7 +86,7 @@ python face-auth/src/main.py
 
 ### 1. Recognition Fluctuations or False Matches
 - **Cause**: In simulated fallback mode, the capacity is low, making it sensitive to camera noise and shadows.
-- **Resolution**: Run `python face-auth/src/download_weights.py` to download the pretrained neural network weights. Re-run `main.py` to activate high-accuracy deep CNN feature matching.
+- **Resolution**: Run `python src/download_weights.py` to download the pretrained neural network weights. Re-run `main.py` to activate high-accuracy deep CNN feature matching.
 
 ### 2. Liveness Fails to Transition
 - **Cause**: High environmental shadows, or face is too far/close, preventing MediaPipe Face Mesh from resolving refined eye landmarks.

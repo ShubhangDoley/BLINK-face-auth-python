@@ -29,20 +29,20 @@ env.bak/
 venv.bak/
 
 # ── Model Weights (too large for git — use Releases or HuggingFace) ───────────
-face-auth/models/*.onnx
-face-auth/models/*.tflite
-face-auth/models/*.pb
-face-auth/models/*.h5
-face-auth/models/mobile/
+models/*.onnx
+models/*.tflite
+models/*.pb
+models/*.h5
+models/mobile/
 
 # ── User Data (privacy — enrolled faces and embeddings) ──────────────────────
-face-auth/data/known_faces/
-face-auth/data/users.json
-face-auth/data/test/
+data/known_faces/
+data/users.json
+data/test/
 
 # Keep the directory structure
-!face-auth/data/.gitkeep
-!face-auth/models/.gitkeep
+!data/.gitkeep
+!models/.gitkeep
 
 # ── IDE / Editor ──────────────────────────────────────────────────────────────
 .vscode/
@@ -61,7 +61,6 @@ Thumbs.db
 *.log
 *.tmp
 *.bak
-
-face-auth/data/known_faces/
+data/known_faces/
 
 

@@ -15,7 +15,7 @@ Supported export targets:
 Run quantize.py first to produce mobilefacenet_int8.onnx before running this.
 
 Usage:
-    python face-auth/src/export_mobile.py [--target tflite|ort|both]
+    python src/export_mobile.py [--target tflite|ort|both]
 """
 
 import os
@@ -41,8 +41,8 @@ def _get_source_model() -> str:
         return FP32_PATH
     else:
         print("[ERROR] No ONNX model found in models/")
-        print("  1. Run: python face-auth/src/download_weights.py")
-        print("  2. Run: python face-auth/src/quantize.py")
+        print("  1. Run: python src/download_weights.py")
+        print("  2. Run: python src/quantize.py")
         sys.exit(1)
 
 

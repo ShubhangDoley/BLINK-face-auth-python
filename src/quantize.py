@@ -7,10 +7,10 @@ that is ~4x smaller and ~2x faster than the FP32 original.
 This is the critical first step before mobile export (export_mobile.py).
 
 Usage:
-    python face-auth/src/quantize.py
+    python src/quantize.py
 
 Output:
-    face-auth/models/mobilefacenet_int8.onnx  (~10MB vs 38MB FP32)
+    models/mobilefacenet_int8.onnx  (~10MB vs 38MB FP32)
 
 Mobile relevance:
     The INT8 model is the input for TFLite / ORT Mobile conversion.
@@ -36,7 +36,7 @@ def quantize_model():
     # ── Pre-flight checks ────────────────────────────────────────────
     if not os.path.exists(fp32_path):
         print(f"\n[ERROR] FP32 source model not found: {fp32_path}")
-        print("[INFO]  Run: python face-auth/src/download_weights.py  to download it first.")
+        print("[INFO]  Run: python src/download_weights.py  to download it first.")
         sys.exit(1)
 
     if os.path.exists(int8_path):

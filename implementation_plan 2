@@ -1,0 +1,66 @@
+# Implementation Plan - Phase 2: Face Preprocessing
+
+This plan details the design, architecture, and validation strategy for **Phase 2: Face Preprocessing**. 
+
+The goal of this phase is to construct an offline, low-latency preprocessing pipeline to transform raw $112 \times 112$ face crops into mathematical inputs (tensors) that maximize facial recognition accuracy under changing lighting conditions (e.g., shadows or low light).
+
+---
+
+## Why Preprocessing Matters & Its Impact on Accuracy
+
+Deep learning face recognition models like **MobileFaceNet** are highly sensitive to domain shifts. Standardizing inputs is critical for two reasons:
+1. **Lighting & Contrast Invariance**: Real-world environments have diverse lighting. Adaptive equalization (using **CLAHE**) standardizes contrast and brightness without introducing noise, helping the model extract structural facial features (like nose bridges and eye geometry) rather than getting confused by shadows.
+2. **Numerical Alignment**: Models are trained on standard ranges (typically normalized to `[-1, 1]`, color-ordered in `RGB`, and structured as `NCHW` tensors). Feeding raw BGR `[0, 255]` pixel ranges will result in completely random and invalid embeddings, destroying matching accuracy.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Normalization Parameters**: MobileFaceNet standard models typically expect pixels normalized using the formula:
+> $$\text{Normalized} = \frac{\text{Pixel} - 127.5}{128.0}$$
+> This maps the `[0, 255]` range to `[-0.99609, 0.99609]`. We will implement this as the default mode, but make it configurable to support standard `[0.0, 1.0]` or standard Z-score division if other models are integrated.
+
+---
+
+## Open Questions
+
+1. **CLAHE Parameters**: We propose using a Grid Size of $8 \times 8$ and a Clip Limit of `2.0` for CLAHE as the default settings. This provides clean adaptive enhancement without creating harsh edge distortions. Does this work for your use cases, or would you like a slider/configuration to tune it in real time?
+
+---
+
+## Proposed Changes
+
+We will implement the complete preprocessing logic inside the pre-existing skeleton file `face-auth/src/preprocess.py`.
+
+### Preprocessing Subsystem
+
+#### [MODIFY] [preprocess.py](file:///e:/Hackathons/BLINK/face-auth/src/preprocess.py)
+Update `FacePreprocessor` to include:
+- **RGB Conversion**: Convert OpenCV BGR to standard RGB channel format.
+- **Adaptive Contrast Equalization (CLAHE)**: Converts BGR to YCrCb or LAB, applies CLAHE on the luminance channel (L or Y) to prevent color shifting, and converts back.
+- **Standardization/Normalization**: Implements dual modes:
+  * `mobilefacenet` mode: $\frac{x - 127.5}{128.0}$
+  * `range_0_1` mode: $\frac{x}{255.0}$
+- **Tensor Formatting**: Transposes shape from `(H, W, C)` to `(C, H, W)` and expands dimensions to create a `(1, C, H, W)` batch tensor suitable for ONNX Runtime.
+- **Offline Batch Test Utility**: A main script block in `preprocess.py` that loads an existing cropped face from your `data/test/` directory, runs the preprocessing steps, and outputs a visual side-by-side comparison of the raw face crop versus the CLAHE-enhanced, normalized result.
+
+---
+
+## Verification Plan
+
+### Automated / Manual Verification
+1. **Visual Preprocessing Check**:
+   - Run the preprocessor script directly:
+     ```bash
+     python face-auth/src/preprocess.py
+     ```
+2. **Behavioral Checks**:
+   - The script will search for the saved crops inside `face-auth/data/test/`.
+   - It will load the latest crop, run BGR-to-RGB, CLAHE contrast correction, and tensor normalization.
+   - It will display a high-fidelity OpenCV comparison window showing:
+     * **Left**: Original Crop (112x112 BGR)
+     * **Right**: CLAHE-Equalized Crop (112x112 BGR)
+   - It will log the exact shapes and min/max/mean statistical metrics of the generated tensor to the console:
+     * Expected shape: `(1, 3, 112, 112)`
+     * Expected range: `[-1.0, 1.0]` (approximately)

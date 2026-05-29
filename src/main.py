@@ -205,7 +205,7 @@ def main():
             
             # ── Stage: Crop & Align ──────────────────────────────────────
             with stage_timer.measure("crop_align"):
-                current_crop = detector.crop_and_align(frame, bbox, padding_ratio=0.15)
+                current_crop = detector.crop_and_align(frame, bbox, landmarks=primary_face.get('landmarks'), padding_ratio=0.15)
             
             if current_crop is not None:
                 # Cache crop for display/enrollment

@@ -80,13 +80,15 @@ class FaceDetector:
         
         return detections
 
-    def crop_and_align(self, frame: np.ndarray, bbox: Tuple[int, int, int, int], padding_ratio: float = 0.15, target_size: Tuple[int, int] = (112, 112)) -> Optional[np.ndarray]:
+    def crop_and_align(self, frame: np.ndarray, bbox: Tuple[int, int, int, int], landmarks: Optional[List[Dict[str, int]]] = None, padding_ratio: float = 0.15, target_size: Tuple[int, int] = (112, 112)) -> Optional[np.ndarray]:
         """
         Extracts, pads, and resizes a face crop from the BGR frame.
+        Applies rotation alignment using eye landmarks if available to keep the face horizontal.
         
         Args:
             frame: The original BGR frame.
             bbox: (xmin, ymin, width, height) bounding box coordinates.
+            landmarks: Optional face landmarks list containing right eye and left eye.
             padding_ratio: Additional margins to pad the crop around the bounding box (defaults to 15%).
             target_size: Target tuple (width, height) to resize to. Recommended standard is (112, 112).
             
@@ -94,6 +96,35 @@ class FaceDetector:
             A normalized 112x112 BGR cropped face image, or None if crop bounds are invalid.
         """
         h, w, _ = frame.shape
+
+        # If landmarks are provided, apply rotation-based face alignment
+        if landmarks and len(landmarks) >= 2:
+            try:
+                # Landmark 0 = Right eye (usually left on image), Landmark 1 = Left eye (usually right on image)
+                right_eye = landmarks[0]
+                left_eye = landmarks[1]
+                
+                # Calculate coordinates
+                dy = left_eye['y'] - right_eye['y']
+                dx = left_eye['x'] - right_eye['x']
+                
+                # Compute angle to rotate (in degrees)
+                angle = np.degrees(np.arctan2(dy, dx))
+                
+                # Midpoint between the eyes is the center of rotation
+                eye_center = (
+                    int((right_eye['x'] + left_eye['x']) / 2),
+                    int((right_eye['y'] + left_eye['y']) / 2)
+                )
+                
+                # Build the affine rotation matrix
+                rot_mat = cv2.getRotationMatrix2D(eye_center, angle, 1.0)
+                
+                # Warp the entire frame to align the face
+                frame = cv2.warpAffine(frame, rot_mat, (w, h), flags=cv2.INTER_CUBIC)
+            except Exception as e:
+                print(f"[WARNING] Face alignment rotation failed: {e}")
+
         xmin, ymin, width, height = bbox
         
         # Apply scaling margins to the bounding box to capture complete head profiles for alignment/liveness
@@ -226,8 +257,8 @@ def main():
             bbox = primary_face['bbox']
             score = primary_face['score']
             
-            # Crop the face and save to buffer for manual capture
-            latest_crop = detector.crop_and_align(frame, bbox, padding_ratio=0.15)
+            # Crop the face and save to buffer for manual capture with rotation alignment
+            latest_crop = detector.crop_and_align(frame, bbox, landmarks=primary_face.get('landmarks'), padding_ratio=0.15)
             
             # Draw primary beautiful modern box
             detector.draw_premium_bbox(frame, bbox, score)

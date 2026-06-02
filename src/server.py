@@ -2,8 +2,6 @@ import os
 from dotenv import load_dotenv
 load_dotenv() # Load local environment variables from .env file
 
-import cv2
-import numpy as np
 from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
@@ -11,16 +9,42 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-# Import our robust core BLINK pipeline components
-from detect import FaceDetector
-from preprocess import FacePreprocessor
-from recognize import FaceRecognizer
-
 # Import cloud database configurations and relational models
 from cloud_database import init_db, get_db
 from models import PostgresUser, PostgresAttendance
 
-# Initialize FastAPI App
+# ── Optional AI Engine (not required for cloud sync endpoints) ────────────────
+# In cloud/serverless deployments the mobile app handles all on-device inference.
+# These imports are only needed for the /api/v1/embeddings desktop endpoint.
+AI_ENGINES_AVAILABLE = False
+detector = None
+preprocessor = None
+recognizer = None
+
+try:
+    import cv2
+    import numpy as np
+    from detect import FaceDetector
+    from preprocess import FacePreprocessor
+    from recognize import FaceRecognizer
+
+    print("[INIT] Loading Face Detector...")
+    detector = FaceDetector(min_detection_confidence=0.8, model_selection=0)
+
+    print("[INIT] Loading Face Preprocessor...")
+    preprocessor = FacePreprocessor(target_size=(112, 112), norm_mode="mobilefacenet")
+
+    print("[INIT] Loading Face Recognizer...")
+    recognizer = FaceRecognizer()
+
+    AI_ENGINES_AVAILABLE = True
+    print("[INIT] ✅ Biometric AI engines loaded successfully.")
+except Exception as e:
+    print(f"[INIT] ⚠️  Biometric AI engines not available: {e}")
+    print("[INIT] Sync endpoints (/api/v1/sync/*) are fully operational.")
+    print("[INIT] Embedding endpoint (/api/v1/embeddings) requires local deployment with MediaPipe.")
+
+# ── FastAPI App ───────────────────────────────────────────────────────────────
 app = FastAPI(
     title="BLINK — Biometric Embedding API Server",
     description="Calculates normalized 128D/512D face embeddings from uploaded images using MobileFaceNet ONNX model.",
@@ -32,7 +56,7 @@ def startup_event():
     # Bootstrap relational schemas (PostgreSQL or local SQLite fallback)
     init_db()
 
-# Enable CORS so our React Native app can call it directly during development
+# Enable CORS so the React Native app can call it directly during development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -41,22 +65,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize biometric engines
-print("[INIT] Loading Face Detector...")
-detector = FaceDetector(min_detection_confidence=0.8, model_selection=0)
-
-print("[INIT] Loading Face Preprocessor...")
-preprocessor = FacePreprocessor(target_size=(112, 112), norm_mode="mobilefacenet")
-
-print("[INIT] Loading Face Recognizer...")
-recognizer = FaceRecognizer()
-
 @app.post("/api/v1/embeddings")
 async def calculate_embeddings(file: UploadFile = File(...)):
     """
     Receives an uploaded photo, crops and aligns the face, 
     calculates the 128D/512D face embedding, and returns it.
     """
+    if not AI_ENGINES_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Biometric AI engines unavailable in this deployment. Use on-device mobile inference instead."
+        )
     try:
         # 1. Read uploaded image bytes
         contents = await file.read()
@@ -107,7 +126,8 @@ def health_check():
     return {
         "status": "healthy",
         "engine": "BLINK Core",
-        "simulated_fallback": recognizer.simulated
+        "ai_engines_available": AI_ENGINES_AVAILABLE,
+        "simulated_fallback": recognizer.simulated if recognizer else None,
     }
 
 # ── Pydantic Request Payloads for Synchronization ────────────────────────────

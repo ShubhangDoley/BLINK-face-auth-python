@@ -1,15 +1,24 @@
 import os
+from dotenv import load_dotenv
+load_dotenv() # Load local environment variables from .env file
+
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi import FastAPI, File, UploadFile, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from typing import List
+from typing import List, Optional, Dict, Any
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 # Import our robust core BLINK pipeline components
 from detect import FaceDetector
 from preprocess import FacePreprocessor
 from recognize import FaceRecognizer
+
+# Import cloud database configurations and relational models
+from cloud_database import init_db, get_db
+from models import PostgresUser, PostgresAttendance
 
 # Initialize FastAPI App
 app = FastAPI(
@@ -17,6 +26,11 @@ app = FastAPI(
     description="Calculates normalized 128D/512D face embeddings from uploaded images using MobileFaceNet ONNX model.",
     version="1.0.0"
 )
+
+@app.on_event("startup")
+def startup_event():
+    # Bootstrap relational schemas (PostgreSQL or local SQLite fallback)
+    init_db()
 
 # Enable CORS so our React Native app can call it directly during development
 app.add_middleware(
@@ -95,6 +109,92 @@ def health_check():
         "engine": "BLINK Core",
         "simulated_fallback": recognizer.simulated
     }
+
+# ── Pydantic Request Payloads for Synchronization ────────────────────────────
+class UserSyncPayload(BaseModel):
+    id: str
+    name: str
+    encrypted_envelope_json: Optional[Dict[str, Any]] = None
+    model_mode: str
+    enrolled_at: str
+    status: str
+
+class AttendanceSyncPayload(BaseModel):
+    id: str
+    person_id: str
+    timestamp: str
+    status: str
+    punctuality: str
+
+# ── E2EE Synchronization API Endpoints ─────────────────────────────────────────
+@app.post("/api/v1/sync/users")
+def sync_users(payloads: List[UserSyncPayload], db: Session = Depends(get_db)):
+    """
+    Synchronizes users (E2EE envelopes) from the mobile device to the cloud database.
+    Performs upserts (insert or update on primary key conflict).
+    """
+    synced_ids = []
+    for p in payloads:
+        # Check if user already exists in PostgreSQL/SQLite
+        user = db.query(PostgresUser).filter(PostgresUser.id == p.id).first()
+        if user:
+            user.name = p.name
+            user.encrypted_envelope_json = p.encrypted_envelope_json
+            user.status = p.status
+            user.model_mode = p.model_mode
+        else:
+            user = PostgresUser(
+                id=p.id,
+                name=p.name,
+                encrypted_envelope_json=p.encrypted_envelope_json,
+                model_mode=p.model_mode,
+                enrolled_at=p.enrolled_at,
+                status=p.status
+            )
+            db.add(user)
+        synced_ids.append(p.id)
+    db.commit()
+    return {"success": True, "synced_count": len(synced_ids), "synced_ids": synced_ids}
+
+@app.get("/api/v1/sync/users")
+def get_synced_users(db: Session = Depends(get_db)):
+    """
+    Returns all registered users and their E2EE biometric envelopes from the cloud,
+    allowing other authorized supervisor devices to download and match them offline.
+    """
+    users = db.query(PostgresUser).all()
+    result = []
+    for u in users:
+        result.append({
+            "id": u.id,
+            "name": u.name,
+            "encrypted_envelope_json": u.encrypted_envelope_json,
+            "model_mode": u.model_mode,
+            "enrolled_at": u.enrolled_at,
+            "status": u.status
+        })
+    return {"success": True, "users": result}
+
+@app.post("/api/v1/sync/attendance")
+def sync_attendance(payloads: List[AttendanceSyncPayload], db: Session = Depends(get_db)):
+    """
+    Batch synchronizes local offline attendance logs to the central database.
+    """
+    synced_ids = []
+    for p in payloads:
+        log = db.query(PostgresAttendance).filter(PostgresAttendance.id == p.id).first()
+        if not log:
+            log = PostgresAttendance(
+                id=p.id,
+                person_id=p.person_id,
+                timestamp=p.timestamp,
+                status=p.status,
+                punctuality=p.punctuality
+            )
+            db.add(log)
+        synced_ids.append(p.id)
+    db.commit()
+    return {"success": True, "synced_count": len(synced_ids), "synced_ids": synced_ids}
 
 if __name__ == "__main__":
     # Run server on port 8000 accessible from all network devices (critical for mobile debug testing)

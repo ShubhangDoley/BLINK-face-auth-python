@@ -27,5 +27,5 @@ EXPOSE 8000
 
 WORKDIR /app/src
 
-# Run uvicorn server
-CMD uvicorn server:app --host 0.0.0.0 --port 8000
+# Run uvicorn — uses $PORT so Render can inject its own port at runtime
+CMD uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}

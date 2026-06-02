@@ -20,7 +20,6 @@ share/python-wheels/
 MANIFEST
 
 # ── Virtual Environments ──────────────────────────────────────────────────────
-.env
 .venv
 env/
 venv/
@@ -61,6 +60,25 @@ Thumbs.db
 *.log
 *.tmp
 *.bak
-data/known_faces/
 
+# ─────────────────────────────────────────────────────────────────────────────
+# 🔒 SECURITY — NEVER COMMIT THESE
+# ─────────────────────────────────────────────────────────────────────────────
 
+# Environment files — contains DB passwords, API keys, AWS secrets
+.env
+.env.*
+src/.env
+src/.env.*
+*.env
+
+# Local SQLite fallback database — may contain biometric data
+*.db
+*.sqlite
+*.sqlite3
+cloud_blink.db
+src/cloud_blink.db
+
+# AWS credentials / config
+.aws/
+credentials

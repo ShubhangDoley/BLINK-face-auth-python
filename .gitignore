@@ -71,6 +71,9 @@ Thumbs.db
 src/.env
 src/.env.*
 *.env
+# Allow the safe template (no real credentials)
+!.env.example
+!src/.env.example
 
 # Local SQLite fallback database — may contain biometric data
 *.db
